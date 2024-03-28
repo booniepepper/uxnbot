@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -ex
+
+export UXN_CODE="$@"
+
+envsubst <template.tal >source.tal
+
+uxnasm source.tal temp.rom
+uxncli temp.rom trigger
