@@ -3,8 +3,12 @@
 set -ex
 
 export UXN_CODE="$@"
-
 envsubst <template.tal >source.tal
 
-uxnasm source.tal temp.rom
+uxnasm source.tal temp.rom >asm.log \
+  || {
+    cat asm.log
+    exit 2
+  }
+
 uxncli temp.rom trigger
