@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <time.h>
 
 typedef unsigned char Uint8;
 typedef signed char Sint8;
@@ -31,6 +32,30 @@ system_inspect(Uxn *u)
 	fprintf(stderr, "RST "), system_print(&u->rst);
 }
 
+Uint8
+datetime_dei(Uxn *u, Uint8 addr)
+{
+	time_t seconds = time(NULL);
+	struct tm zt = {0};
+	struct tm *t = localtime(&seconds);
+	if(t == NULL)
+		t = &zt;
+	switch(addr) {
+	case 0xc0: return (t->tm_year + 1900) >> 8;
+	case 0xc1: return (t->tm_year + 1900);
+	case 0xc2: return t->tm_mon;
+	case 0xc3: return t->tm_mday;
+	case 0xc4: return t->tm_hour;
+	case 0xc5: return t->tm_min;
+	case 0xc6: return t->tm_sec;
+	case 0xc7: return t->tm_wday;
+	case 0xc8: return t->tm_yday >> 8;
+	case 0xc9: return t->tm_yday;
+	case 0xca: return t->tm_isdst;
+	default: return u->dev[addr];
+	}
+}
+
 int
 emu_error(char *msg){
 	fprintf(stdout, msg);
@@ -40,6 +65,9 @@ emu_error(char *msg){
 Uint8
 emu_dei(Uxn *u, Uint8 addr)
 {
+	switch(addr) {
+	case 0xc0: return datetime_dei(u, addr);
+	}
 	return u->dev[addr];
 }
 
