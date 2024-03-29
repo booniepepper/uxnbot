@@ -11,4 +11,5 @@ uxnasm source.tal temp.rom >asm.log \
     exit 2
   }
 
-uxncli temp.rom trigger
+timeout 2s \
+  uxncli temp.rom trigger
