@@ -65,9 +65,7 @@ emu_error(char *msg){
 Uint8
 emu_dei(Uxn *u, Uint8 addr)
 {
-	switch(addr) {
-	case 0xc0: return datetime_dei(u, addr);
-	}
+	if((addr & 0xf0) == 0xc0) { return datetime_dei(u, addr); }
 	return u->dev[addr];
 }
 
