@@ -4,5 +4,7 @@ set -eu
 
 echo "$@" >temp.tal
 
-2>&1 uxnasm temp.tal temp.rom || exit
-2>&1 uxnbot temp.rom
+# stderr redirection and exits are temporary until I figure out how to handle
+# them in the Factor code for Discord
+2>&1 uxnasm temp.tal temp.rom || exit 0
+2>&1 uxnbot temp.rom || exit 0
