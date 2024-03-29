@@ -400,9 +400,10 @@ main(int argc, char *argv[])
 {
 	ptr = PAGE;
 	copy("on-reset", scope, 0);
-	if(argc == 1) return error_top("usage", "uxnasm [-v] input.tal output.rom");
-	if(scmp(argv[1], "-v", 2)) return !fprintf(stdout, "Uxnasm - Uxntal Assembler, 29 Mar 2024.\n");
-	if(!assemble(argv[1]) || !length) return !error_top("Assembly", "Failed to assemble rom.");
+	if(argc == 2 && scmp(argv[1], "-v", 2)) return !fprintf(stdout, "Uxnasm - Uxntal Assembler, 29 Mar 2024.\n");
+	if(argc != 3) return error_top("usage", "uxnasm [-v] input.tal output.rom");
+	if(!assemble(argv[1])) return !error_top("Assembly", "Failed to assemble rom.");
+	if(!length) return !error_top("Assembly", "Output rom is empty.");
 	if(!resolve()) return !error_top("Assembly", "Failed to resolve symbols.");
 	if(!build(argv[2])) return !error_top("Assembly", "Failed to build rom.");
 	return 0;
