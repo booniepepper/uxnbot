@@ -106,7 +106,7 @@ uxn_eval(Uxn *u, Uint16 pc)
 		/* 2 */ Uint8 m2 = ins & 0x20;
 		/* r */ Stack *s = ins & 0x40 ? &u->rst : &u->wst;
 		/* k */ if(ins & 0x80) kp = s->ptr, sp = &kp; else sp = &s->ptr;
-		/* recurse */ if(recurse++ > halt) return emu_error("Infinite Loop.");
+		/* recurse */ if(recurse++ > halt) return emu_error("Cycle limit exceeded.");
 		switch(ins & 0x1f) {
 		case 0x00:
 		switch(ins) {
