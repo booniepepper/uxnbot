@@ -1,11 +1,14 @@
+arch := $(shell uname -m)
+tag = booniepepper/uxnbot-discord:latest
+
 .PHONY: build
 build:
-	docker buildx build . -t booniepepper/uxn:latest >build.log
+	docker buildx build . -t $(tag) >build.log
 
 .PHONY: test
 test: build
-	docker run booniepepper/uxn
+	docker run $(tag) "#01 #02 ADD"
 
 .PHONY: release
 release: build test
-	docker push booniepepper/uxn:latest
+	docker push $(tag)

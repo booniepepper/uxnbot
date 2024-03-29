@@ -1,0 +1,13 @@
+#!/bin/sh
+
+set -eu
+
+echo "$@" >temp.tal
+
+uxnasm temp.tal temp.rom >asm.log \
+  || {
+    cat asm.log
+    exit
+  }
+
+uxnbot temp.rom

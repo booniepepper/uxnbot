@@ -1,18 +1,10 @@
 FROM alpine
 
-RUN apk add --no-cache envsubst gcc git libc-dev \
-  && git clone https://git.sr.ht/~rabbits/uxn11 \
-  && cd uxn11 \
-  && cc src/devices/datetime.c \
-        src/devices/system.c \
-        src/devices/console.c \
-        src/devices/file.c src/uxn.c \
-        -DNDEBUG -Os -g0 \
-        -s src/uxncli.c \
-        -o /bin/uxncli \
-  && cc src/uxnasm.c \
-        -o /bin/uxnasm
+WORKDIR "/uxnbot"
 
-COPY template.tal eval .
+COPY eval-uxn src .
+RUN apk add --no-cache gcc libc-dev \
+  && cc uxnasm.c -o /bin/uxnasm \
+  && cc uxnbot.c -o /bin/uxnbot
 
-ENTRYPOINT ["./eval"]
+ENTRYPOINT ["./eval-uxn"]
