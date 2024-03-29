@@ -50,8 +50,8 @@ static char *join(char *a, char j, char *b) { char *res = dictnext; save(a, j), 
 #define writeshort(x) (writebyte(x >> 8, ctx) && writebyte(x & 0xff, ctx))
 #define findlabel(x) finditem(x, labels, labels_len)
 #define findmacro(x) finditem(x, macros, macro_len)
-#define error_top(name, msg) !fprintf(stderr, "%s: %s\n", name, msg)
-#define error_asm(name) !fprintf(stderr, "%s: %s in @%s, %s:%d.\n", name, token, scope, ctx->path, ctx->line)
+#define error_top(name, msg) !fprintf(stdout, "%s: %s\n", name, msg)
+#define error_asm(name) !fprintf(stdout, "%s: %s in @%s, %s:%d.\n", name, token, scope, ctx->path, ctx->line)
 
 /* clang-format on */
 
@@ -305,7 +305,7 @@ parse(char *w, FILE *f, Context *ctx)
 	case ',': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT"), ctx) && writebyte(0xff, ctx);
 	case '-': return makeref(w + 1, w[0], ptr) && writebyte(0xff, ctx);
 	case '.': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT"), ctx) && writebyte(0xff, ctx);
-	case ':': fprintf(stderr, "Deprecated rune %s, use =%s\n", w, w + 1); /* fall-through */
+	case ':': fprintf(stdout, "Deprecated rune %s, use =%s\n", w, w + 1); /* fall-through */
 	case '=': return makeref(w + 1, w[0], ptr) && writeshort(0xffff);
 	case ';': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT2"), ctx) && writeshort(0xffff);
 	case '?': return makeref(w + 1, w[0], ptr + 1) && writebyte(0x20, ctx) && writeshort(0xffff);
