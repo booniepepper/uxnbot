@@ -96,7 +96,8 @@ emu_deo(Uxn *u, Uint8 addr, Uint8 value)
 int
 uxn_eval(Uxn *u, Uint16 pc)
 {
-	int halt = 0;
+	int recurse = 0;
+	int halt = 0x1000000; // INT_MAX = 0x7FFFFFFF
 	Uint8 *ram = u->ram;
 	if(!pc || u->dev[0x0f]) return 0;
 	for(;;) {
@@ -105,7 +106,7 @@ uxn_eval(Uxn *u, Uint16 pc)
 		/* 2 */ Uint8 m2 = ins & 0x20;
 		/* r */ Stack *s = ins & 0x40 ? &u->rst : &u->wst;
 		/* k */ if(ins & 0x80) kp = s->ptr, sp = &kp; else sp = &s->ptr;
-		/* halt */ if(halt++ > 0x1000000) return emu_error("Infinte Loop.");
+		/* recurse */ if(recurse++ > halt) return emu_error("Infinite Loop.");
 		switch(ins & 0x1f) {
 		case 0x00:
 		switch(ins) {
