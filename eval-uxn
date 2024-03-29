@@ -4,10 +4,10 @@ set -eu
 
 echo "$@" >temp.tal
 
-uxnasm temp.tal temp.rom >asm.log \
+2>&1 uxnasm temp.tal temp.rom >asm.log \
   || {
     cat asm.log
     exit
   }
 
-uxnbot temp.rom
+2>&1 uxnbot temp.rom
