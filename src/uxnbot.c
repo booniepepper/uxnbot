@@ -75,6 +75,7 @@ emu_deo(Uxn *u, Uint8 addr, Uint8 value)
 	u->dev[addr] = value;
 	debug = 0;
 	switch(addr) {
+	case 0x0e: system_inspect(u); return;
 	case 0x18: fputc(u->dev[0x18], stdout), fflush(stdout); return;
 	case 0x19: fputc(u->dev[0x19], stderr), fflush(stderr); return;
 	}
