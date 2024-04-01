@@ -28,3 +28,4 @@ Inspired by d6's IRC bot here:
    into this repo
 3. Error handling in the discord connection (factor code) should print stderr
    instead of crashing if uxnasm/uxnbot die
+4. Handle private messages
