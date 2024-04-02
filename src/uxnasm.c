@@ -50,8 +50,8 @@ static char *join(char *a, char j, char *b) { char *res = dictnext; save(a, j), 
 #define writeshort(x) (writebyte(x >> 8, ctx) && writebyte(x & 0xff, ctx))
 #define findlabel(x) finditem(x, labels, labels_len)
 #define findmacro(x) finditem(x, macros, macro_len)
-#define error_top(name, msg) !fprintf(stdout, "%s: %s\n", name, msg)
-#define error_asm(name) !fprintf(stdout, "%s: %s in @%s, %s:%d.\n", name, token, scope, ctx->path, ctx->line)
+#define error_top(name, msg) !printf("%s: %s\n", name, msg)
+#define error_asm(name) !printf("%s: %s in @%s, %s:%d.\n", name, token, scope, ctx->path, ctx->line)
 
 /* clang-format on */
 
@@ -165,6 +165,7 @@ makelambda(int id)
 static int
 makemacro(char *name, FILE *f, Context *ctx)
 {
+	int depth = 0;
 	char c;
 	Item *m;
 	if(macro_len >= 0x100) return error_asm("Macros limit exceeded");
@@ -175,9 +176,11 @@ makemacro(char *name, FILE *f, Context *ctx)
 	m->content = dictnext;
 	while(f && fread(&c, 1, 1, f) && c != '{')
 		if(c == 0xa) ctx->line += 1;
-	while(f && fread(&c, 1, 1, f) && c != '}') {
+	while(f && fread(&c, 1, 1, f)) {
 		if(c == 0xa) ctx->line += 1;
 		if(c == '%') return error_top("Macro nested", name);
+		if(c == '{') depth++;
+		if(c == '}' && --depth) break;
 		if(c == '(' && !walkcomment(f, ctx))
 			return 0;
 		else
@@ -305,7 +308,7 @@ parse(char *w, FILE *f, Context *ctx)
 	case ',': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT"), ctx) && writebyte(0xff, ctx);
 	case '-': return makeref(w + 1, w[0], ptr) && writebyte(0xff, ctx);
 	case '.': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT"), ctx) && writebyte(0xff, ctx);
-	case ':': fprintf(stdout, "Deprecated rune %s, use =%s\n", w, w + 1); /* fall-through */
+	case ':': printf("Deprecated rune %s, use =%s\n", w, w + 1); /* fall-through */
 	case '=': return makeref(w + 1, w[0], ptr) && writeshort(0xffff);
 	case ';': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT2"), ctx) && writeshort(0xffff);
 	case '?': return makeref(w + 1, w[0], ptr + 1) && writebyte(0x20, ctx) && writeshort(0xffff);
@@ -371,9 +374,9 @@ build(char *rompath)
 		return !error_top("Output file invalid", rompath);
 	for(i = 0; i < labels_len; i++)
 		if(labels[i].name[0] - 'A' > 25 && !labels[i].refs)
-			fprintf(stdout, "-- Unused label: %s\n", labels[i].name);
+			printf("-- Unused label: %s\n", labels[i].name);
 	fwrite(data + PAGE, length - PAGE, 1, dst);
-	/* fprintf(stdout,
+	/* printf(
 		"Assembled %s in %d bytes(%.2f%% used), %d labels, %d macros.\n",
 		rompath,
 		length - PAGE,
@@ -400,7 +403,7 @@ main(int argc, char *argv[])
 {
 	ptr = PAGE;
 	copy("on-reset", scope, 0);
-	if(argc == 2 && scmp(argv[1], "-v", 2)) return !fprintf(stdout, "Uxnasm - Uxntal Assembler, 30 Mar 2024.\n");
+	if(argc == 2 && scmp(argv[1], "-v", 2)) return !printf("Uxnasm - Uxntal Assembler, 2 Apr 2024.\n");
 	if(argc != 3) return error_top("usage", "uxnasm [-v] input.tal output.rom");
 	if(!assemble(argv[1])) return 1;
 	if(!resolve(argv[2])) return 1;
