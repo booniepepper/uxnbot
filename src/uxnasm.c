@@ -97,7 +97,7 @@ findopcode(char *s)
 			else if(s[m] == 'k')
 				i |= (1 << 7);
 			else
-				return error_top("Unknown opcode mode", s);
+				return 0;
 			m++;
 		}
 		return i;
@@ -115,7 +115,7 @@ walkcomment(FILE *f, Context *ctx)
 		if(c == '(') depth++;
 		if(c == ')' && --depth < 1) return 1;
 	}
-	return 0;
+	return error_asm("Comment incomplete");
 }
 
 static int
@@ -177,9 +177,9 @@ makemacro(char *name, FILE *f, Context *ctx)
 		if(c == 0xa) ctx->line += 1;
 	while(f && fread(&c, 1, 1, f) && c != '}') {
 		if(c == 0xa) ctx->line += 1;
-		if(c == '%') return error_top("Nested macro", name);
-		if(c == '(')
-			walkcomment(f, ctx);
+		if(c == '%') return error_top("Macro nested", name);
+		if(c == '(' && !walkcomment(f, ctx))
+			return 0;
 		else
 			*dictnext++ = c;
 	}
@@ -194,8 +194,8 @@ makelabel(char *name, int setscope, Context *ctx)
 	if(name[0] == '&')
 		name = join(scope, '/', name + 1);
 	if(labels_len >= 0x400) return error_asm("Labels limit exceeded");
-	if(isinvalid(name)) return error_asm("Label is invalid");
-	if(findlabel(name)) return error_asm("Label is duplicate");
+	if(isinvalid(name)) return error_asm("Label invalid");
+	if(findlabel(name)) return error_asm("Label duplicate");
 	l = &labels[labels_len++];
 	l->name = push(name, 0);
 	l->addr = ptr;
@@ -223,7 +223,7 @@ makeref(char *label, char rune, Uint16 addr)
 }
 
 static int
-writepad(char *w)
+writepad(char *w, Context *ctx)
 {
 	Item *l;
 	int rel = w[0] == '$' ? ptr : 0;
@@ -235,14 +235,14 @@ writepad(char *w)
 		ptr = l->addr + rel;
 		return 1;
 	}
-	return 0;
+	return error_asm("Padding invalid");
 }
 
 static int
 writebyte(Uint8 b, Context *ctx)
 {
 	if(ptr < PAGE)
-		return error_asm("Writing in zero-page");
+		return error_asm("Writing zero-page");
 	else if(ptr >= 0x10000)
 		return error_asm("Writing outside memory");
 	else if(ptr < length)
@@ -263,7 +263,7 @@ writehex(char *w, Context *ctx)
 	else if(w[3] && !w[4])
 		return writeshort(shex(w));
 	else
-		return 0;
+		return error_asm("Hexadecimal invalid");
 }
 
 static int
@@ -271,7 +271,7 @@ writestring(char *w, Context *ctx)
 {
 	char c;
 	while((c = *(w++)))
-		if(!writebyte(c, ctx)) return 0;
+		if(!writebyte(c, ctx)) return error_asm("String invalid");
 	return 1;
 }
 
@@ -281,10 +281,10 @@ assemble(char *filename)
 	FILE *f;
 	int res = 0;
 	Context ctx;
-	ctx.line = 0;
+	ctx.line = 1;
 	ctx.path = push(filename, 0);
 	if(!(f = fopen(filename, "r")))
-		return error_top("Invalid source", filename);
+		return error_top("Source missing", filename);
 	res = walkfile(f, &ctx);
 	fclose(f);
 	return res;
@@ -295,12 +295,12 @@ parse(char *w, FILE *f, Context *ctx)
 {
 	Item *m;
 	switch(w[0]) {
-	case '(': return !walkcomment(f, ctx) ? error_asm("Invalid comment") : 1;
-	case '%': return !makemacro(w + 1, f, ctx) ? error_asm("Invalid macro") : 1;
-	case '@': return !makelabel(w + 1, 1, ctx) ? error_asm("Invalid label") : 1;
-	case '&': return !makelabel(w, 0, ctx) ? error_asm("Invalid sublabel") : 1;
-	case '}': return !makelabel(makelambda(lambda_stack[--lambda_ptr]), 0, ctx) ? error_asm("Invalid label") : 1;
-	case '#': return !ishex(w + 1) || !writehex(w, ctx) ? error_asm("Invalid hexadecimal") : 1;
+	case '(': return walkcomment(f, ctx);
+	case '%': return makemacro(w + 1, f, ctx);
+	case '@': return makelabel(w + 1, 1, ctx);
+	case '&': return makelabel(w, 0, ctx);
+	case '}': return makelabel(makelambda(lambda_stack[--lambda_ptr]), 0, ctx);
+	case '#': return ishex(w + 1) && writehex(w, ctx);
 	case '_': return makeref(w + 1, w[0], ptr) && writebyte(0xff, ctx);
 	case ',': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT"), ctx) && writebyte(0xff, ctx);
 	case '-': return makeref(w + 1, w[0], ptr) && writebyte(0xff, ctx);
@@ -310,10 +310,10 @@ parse(char *w, FILE *f, Context *ctx)
 	case ';': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT2"), ctx) && writeshort(0xffff);
 	case '?': return makeref(w + 1, w[0], ptr + 1) && writebyte(0x20, ctx) && writeshort(0xffff);
 	case '!': return makeref(w + 1, w[0], ptr + 1) && writebyte(0x40, ctx) && writeshort(0xffff);
-	case '"': return !writestring(w + 1, ctx) ? error_asm("Invalid string") : 1;
-	case '~': return !assemble(w + 1) ? error_asm("Invalid include") : 1;
+	case '"': return writestring(w + 1, ctx);
+	case '~': return !assemble(w + 1) ? error_asm("Include missing") : 1;
 	case '$':
-	case '|': return !writepad(w) ? error_asm("Invalid padding") : 1;
+	case '|': return writepad(w, ctx);
 	case '[':
 	case ']': return 1;
 	}
@@ -324,20 +324,20 @@ parse(char *w, FILE *f, Context *ctx)
 }
 
 static int
-resolve(void)
+resolve(char *filename)
 {
 	int i, rel;
-	if(!length) return error_top("Assembly", "Output rom is empty.");
+	if(!length) return error_top("Output empty", filename);
 	for(i = 0; i < refs_len; i++) {
 		Item *r = &refs[i], *l = findlabel(r->name);
 		Uint8 *rom = data + r->addr;
-		if(!l) return error_top("Unknown label", r->name);
+		if(!l) return error_top("Label unknown", r->name);
 		switch(r->rune) {
 		case '_':
 		case ',':
 			*rom = rel = l->addr - r->addr - 2;
 			if((Sint8)data[r->addr] != rel)
-				return error_top("Relative reference is too far", r->name);
+				return error_top("Relative reference too far", r->name);
 			break;
 		case '-':
 		case '.':
@@ -368,7 +368,7 @@ build(char *rompath)
 	char *sympath = join(rompath, '.', "sym");
 	/* rom */
 	if(!(dst = fopen(rompath, "wb")))
-		return !error_top("Invalid output file", rompath);
+		return !error_top("Output file invalid", rompath);
 	for(i = 0; i < labels_len; i++)
 		if(labels[i].name[0] - 'A' > 25 && !labels[i].refs)
 			fprintf(stdout, "-- Unused label: %s\n", labels[i].name);
@@ -382,7 +382,7 @@ build(char *rompath)
 		macro_len); */
 	/* sym */
 	if(!(dstsym = fopen(sympath, "w")))
-		return !error_top("Invalid symbols file", sympath);
+		return !error_top("Symbols file invalid", sympath);
 	for(i = 0; i < labels_len; i++) {
 		Uint8 hb = labels[i].addr >> 8, lb = labels[i].addr;
 		char c, d = 0, *name = labels[i].name;
@@ -400,11 +400,10 @@ main(int argc, char *argv[])
 {
 	ptr = PAGE;
 	copy("on-reset", scope, 0);
-	if(argc == 2 && scmp(argv[1], "-v", 2)) return !fprintf(stdout, "Uxnasm - Uxntal Assembler, 29 Mar 2024.\n");
+	if(argc == 2 && scmp(argv[1], "-v", 2)) return !fprintf(stdout, "Uxnasm - Uxntal Assembler, 30 Mar 2024.\n");
 	if(argc != 3) return error_top("usage", "uxnasm [-v] input.tal output.rom");
-	if(!assemble(argv[1])) return !error_top("Assembly", "Failed to assemble rom.");
-	if(!length) return !error_top("Assembly", "Output rom is empty.");
-	if(!resolve()) return !error_top("Assembly", "Failed to resolve symbols.");
-	if(!build(argv[2])) return !error_top("Assembly", "Failed to build rom.");
+	if(!assemble(argv[1])) return 1;
+	if(!resolve(argv[2])) return 1;
+	if(!build(argv[2])) return 1;
 	return 0;
 }
