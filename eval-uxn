@@ -2,9 +2,9 @@
 
 set -eu
 
-echo "$@" >temp.tal
+echo "$@" >chat.tal
 
 # stderr redirection and exits are temporary until I figure out how to handle
 # them in the Factor code for Discord
-2>&1 uxnasm temp.tal temp.rom || exit 0
-2>&1 uxnbot temp.rom || exit 0
+2>&1 uxnasm chat.tal chat.rom || exit 0
+2>&1 uxnbot chat.rom || exit 0
