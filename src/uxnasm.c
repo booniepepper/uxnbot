@@ -149,7 +149,8 @@ walkfile(FILE *f, Context *ctx)
 		else
 			return error_asm("Token too long");
 	}
-	return 1;
+	*cptr++ = 0;
+	return parse(token, f, ctx);
 }
 
 static char *
