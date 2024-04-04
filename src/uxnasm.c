@@ -38,7 +38,7 @@ static char ops[][4] = {
 };
 
 static int   find(char *s, char t) { int i = 0; char c; while((c = *s++)) { if(c == t) return i; i++; } return -1; }
-static int   shex(char *s) { int n = 0; char c; while((c = *s++)) { if(find(hexad, c) < 0) return -1; n = n << 4, n |= find(hexad, c); } return n; }
+static int   shex(char *s) { int d, n = 0; char c; while((c = *s++)) { d = find(hexad, c); if(d < 0) return d; n = n << 4, n |= d; } return n; }
 static int   scmp(char *a, char *b, int len) { int i = 0; while(a[i] == b[i]) if(!a[i] || ++i >= len) return 1; return 0; }
 static char *copy(char *src, char *dst, char c) { while(*src && *src != c) *dst++ = *src++; *dst++ = 0; return dst; }
 static char *save(char *s, char c) { char *o = dictnext; while((*dictnext++ = *s++) && *s); *dictnext++ = c; return o; }
