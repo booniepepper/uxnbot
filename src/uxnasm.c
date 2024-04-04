@@ -380,13 +380,13 @@ build(char *rompath)
 		if(labels[i].name[0] - 'A' > 25 && !labels[i].refs)
 			printf("-- Unused label: %s\n", labels[i].name);
 	fwrite(data + PAGE, length - PAGE, 1, dst);
-	printf(
+	/* printf(
 		"Assembled %s in %d bytes(%.2f%% used), %d labels, %d macros.\n",
 		rompath,
 		length - PAGE,
 		(length - PAGE) / 652.80,
 		labels_len,
-		macro_len);
+		macro_len); */
 	/* sym */
 	if(!(dstsym = fopen(sympath, "w")))
 		return !error_top("Symbols file invalid", sympath);
