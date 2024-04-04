@@ -45,7 +45,7 @@ static char *save(char *s, char c) { char *o = dictnext; while((*dictnext++ = *s
 static char *join(char *a, char j, char *b) { char *res = dictnext; save(a, j), save(b, 0); return res; } /* join two str */
 
 #define ishex(x) (shex(x) >= 0)
-#define isopc(x) (findopcode(x) || scmp(x, "BRK", 4))
+#define isopc(x) (findopcode(x, ctx) || scmp(x, "BRK", 4))
 #define isinvalid(x) (!x[0] || ishex(x) || isopc(x) || find(runes, x[0]) >= 0)
 #define writeshort(x) (writebyte(x >> 8, ctx) && writebyte(x & 0xff, ctx))
 #define findlabel(x) finditem(x, labels, labels_len)
@@ -82,7 +82,7 @@ finditem(char *name, Item *list, int len)
 }
 
 static Uint8
-findopcode(char *s)
+findopcode(char *s, Context *ctx)
 {
 	int i;
 	for(i = 0; i < 0x20; i++) {
@@ -97,7 +97,7 @@ findopcode(char *s)
 			else if(s[m] == 'k')
 				i |= (1 << 7);
 			else
-				return 0;
+				return error_asm("Opcode mode unknown");
 			m++;
 		}
 		return i;
@@ -261,7 +261,7 @@ static int
 writehex(char *w, Context *ctx)
 {
 	if(*w == '#')
-		writebyte(findopcode("LIT") | !!(++w)[2] << 5, ctx);
+		writebyte(findopcode("LIT", ctx) | !!(++w)[2] << 5, ctx);
 	if(w[1] && !w[2])
 		return writebyte(shex(w), ctx);
 	else if(w[3] && !w[4])
@@ -299,6 +299,7 @@ parse(char *w, FILE *f, Context *ctx)
 {
 	Item *m;
 	switch(w[0]) {
+	case 0x0: return 1;
 	case '(': return walkcomment(f, ctx);
 	case '%': return makemacro(w + 1, f, ctx);
 	case '@': return makelabel(w + 1, 1, ctx);
@@ -306,12 +307,12 @@ parse(char *w, FILE *f, Context *ctx)
 	case '}': return makelabel(makelambda(lambda_stack[--lambda_ptr]), 0, ctx);
 	case '#': return writehex(w, ctx);
 	case '_': return makeref(w + 1, w[0], ptr) && writebyte(0xff, ctx);
-	case ',': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT"), ctx) && writebyte(0xff, ctx);
+	case ',': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT", ctx), ctx) && writebyte(0xff, ctx);
 	case '-': return makeref(w + 1, w[0], ptr) && writebyte(0xff, ctx);
-	case '.': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT"), ctx) && writebyte(0xff, ctx);
+	case '.': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT", ctx), ctx) && writebyte(0xff, ctx);
 	case ':': printf("Deprecated rune %s, use =%s\n", w, w + 1); /* fall-through */
 	case '=': return makeref(w + 1, w[0], ptr) && writeshort(0xffff);
-	case ';': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT2"), ctx) && writeshort(0xffff);
+	case ';': return makeref(w + 1, w[0], ptr + 1) && writebyte(findopcode("LIT2", ctx), ctx) && writeshort(0xffff);
 	case '?': return makeref(w + 1, w[0], ptr + 1) && writebyte(0x20, ctx) && writeshort(0xffff);
 	case '!': return makeref(w + 1, w[0], ptr + 1) && writebyte(0x40, ctx) && writeshort(0xffff);
 	case '"': return writestring(w + 1, ctx);
@@ -322,7 +323,7 @@ parse(char *w, FILE *f, Context *ctx)
 	case ']': return 1;
 	}
 	if(ishex(w)) return writehex(w, ctx);
-	if(isopc(w)) return writebyte(findopcode(w), ctx);
+	if(isopc(w)) return writebyte(findopcode(w, ctx), ctx);
 	if((m = findmacro(w))) return walkmacro(m, ctx);
 	return makeref(w, ' ', ptr + 1) && writebyte(0x60, ctx) && writeshort(0xffff);
 }
@@ -377,13 +378,13 @@ build(char *rompath)
 		if(labels[i].name[0] - 'A' > 25 && !labels[i].refs)
 			printf("-- Unused label: %s\n", labels[i].name);
 	fwrite(data + PAGE, length - PAGE, 1, dst);
-	/* printf(
+	printf(
 		"Assembled %s in %d bytes(%.2f%% used), %d labels, %d macros.\n",
 		rompath,
 		length - PAGE,
 		(length - PAGE) / 652.80,
 		labels_len,
-		macro_len); */
+		macro_len);
 	/* sym */
 	if(!(dstsym = fopen(sympath, "w")))
 		return !error_top("Symbols file invalid", sympath);
