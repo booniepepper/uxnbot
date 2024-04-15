@@ -6,5 +6,10 @@ echo "$@" >chat.tal
 
 # stderr redirection and exits are temporary until I figure out how to handle
 # them in the Factor code for Discord
-2>&1 uxnasm chat.tal chat.rom || exit 0
+if not uxnasm chat.tal chat.rom 2>&1 >asm.log
+then
+  cat asm.log
+  exit 0
+fi
+
 2>&1 uxnbot chat.rom || exit 0
