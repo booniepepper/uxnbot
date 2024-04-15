@@ -3,6 +3,7 @@ name: build-and-docker-publish
 on:
   push:
     branches: [core]
+  workflow_dispatch:
 
 jobs:
   build-and-docker-publish:
