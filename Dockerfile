@@ -1,11 +1,21 @@
-FROM alpine
+FROM alpine as build
 
 WORKDIR "/uxnbot"
 
-COPY eval-uxn src .
-RUN apk add --no-cache gcc libc-dev \
-  && wget https://git.sr.ht/~rabbits/uxn/blob/main/src/uxnasm.c \
-  && cc uxnasm.c -o /bin/uxnasm \
-  && cc uxnbot.c -o /bin/uxnbot
+RUN apk add --no-cache gcc git libc-dev
 
-ENTRYPOINT ["./eval-uxn"]
+RUN git clone https://git.sr.ht/~rabbits/uxn
+RUN cc ./uxn/src/uxnasm.c -o /bin/uxnasm
+
+COPY src/uxnbot.c .
+RUN cc ./uxnbot.c -o /bin/uxnbot
+
+COPY eval-uxn /bin/eval-uxn
+
+
+
+FROM alpine as bin
+
+COPY --from=build /bin/uxnasm /bin/uxnbot /bin/eval-uxn /bin/
+
+ENTRYPOINT ["eval-uxn"]
