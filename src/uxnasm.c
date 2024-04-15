@@ -122,7 +122,8 @@ walkcomment(FILE *f, Context *ctx)
 static int
 walkmacro(Item *m, Context *ctx)
 {
-	char c, *dataptr = m->data, *cptr = token;
+	unsigned char c;
+	char *dataptr = m->data, *cptr = token;
 	while((c = *dataptr++)) {
 		if(c < 0x21) {
 			*cptr++ = 0x00;
@@ -137,7 +138,8 @@ walkmacro(Item *m, Context *ctx)
 static int
 walkfile(FILE *f, Context *ctx)
 {
-	char c, *cptr = token;
+	unsigned char c;
+	char *cptr = token;
 	while(f && fread(&c, 1, 1, f)) {
 		if(c < 0x21) {
 			*cptr++ = 0x00;
@@ -179,7 +181,7 @@ makemacro(char *name, FILE *f, Context *ctx)
 		if(c == 0xa) ctx->line++;
 	while(f && fread(&c, 1, 1, f)) {
 		if(c == 0xa) ctx->line++;
-		if(c == '%') return error_top("Macro nested", name);
+		if(c == '%') return error_asm("Macro nested");
 		if(c == '{') depth++;
 		if(c == '}' && --depth) break;
 		if(c == '(' && !walkcomment(f, ctx))
@@ -212,7 +214,7 @@ static int
 makeref(char *label, char rune, Uint16 addr, Context *ctx)
 {
 	Item *r;
-	if(refs_len >= 0x1000) return error_top("References limit exceeded", label);
+	if(refs_len >= 0x1000) return error_asm("References limit exceeded");
 	r = &refs[refs_len++];
 	if(label[0] == '{') {
 		lambda_stack[lambda_ptr++] = lambda_len;
@@ -380,13 +382,13 @@ build(char *rompath)
 		if(labels[i].name[0] - 'A' > 25 && !labels[i].refs)
 			printf("-- Unused label: %s\n", labels[i].name);
 	fwrite(data + PAGE, length - PAGE, 1, dst);
-	/* printf(
+	printf(
 		"Assembled %s in %d bytes(%.2f%% used), %d labels, %d macros.\n",
 		rompath,
 		length - PAGE,
 		(length - PAGE) / 652.80,
 		labels_len,
-		macro_len); */
+		macro_len);
 	/* sym */
 	if(!(dstsym = fopen(sympath, "w")))
 		return !error_top("Symbols file invalid", sympath);
@@ -407,7 +409,7 @@ main(int argc, char *argv[])
 {
 	ptr = PAGE;
 	copy("on-reset", scope, 0);
-	if(argc == 2 && scmp(argv[1], "-v", 2)) return !printf("Uxnasm - Uxntal Assembler, 3 Apr 2024.\n");
+	if(argc == 2 && scmp(argv[1], "-v", 2)) return !printf("Uxnasm - Uxntal Assembler, 13 Apr 2024.\n");
 	if(argc != 3) return error_top("usage", "uxnasm [-v] input.tal output.rom");
 	if(!assemble(argv[1])) return 1;
 	if(!resolve(argv[2])) return 1;
